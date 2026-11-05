@@ -416,7 +416,11 @@ macro_rules! impl_bits {
 
             impl ParseHex for $i {
                 fn parse_hex(input: &str) -> Result<Self, ParseError> {
-                    <$i>::from_str_radix(input, 16).map_err(|_| ParseError::invalid_hex_flag(input))
+                    // `WriteHex` writes the two's complement bits (`{:x}`), so parse them
+                    // through the unsigned type of the same width
+                    <$u>::from_str_radix(input, 16)
+                        .map(|bits| bits as $i)
+                        .map_err(|_| ParseError::invalid_hex_flag(input))
                 }
             }
 

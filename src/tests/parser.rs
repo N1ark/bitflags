@@ -20,6 +20,28 @@ fn roundtrip() {
 }
 
 #[test]
+fn roundtrip_signed() {
+    bitflags! {
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+        struct TestSigned: i8 {
+            const A = 1;
+            const B = 1 << 1;
+        }
+    }
+
+    let mut s = String::new();
+
+    for a in i8::MIN..=i8::MAX {
+        let f = TestSigned::from_bits_retain(a);
+
+        s.clear();
+        to_writer(&f, &mut s).unwrap();
+
+        assert_eq!(f, from_str::<TestSigned>(&s).unwrap());
+    }
+}
+
+#[test]
 #[cfg(not(miri))] // Very slow in miri
 fn roundtrip_truncate() {
     let mut s = String::new();
@@ -115,6 +137,32 @@ mod from_str {
             .to_string()
             .starts_with("invalid hex flag"));
         assert!(from_str::<TestFlags>("0xffffffffffff")
+            .unwrap_err()
+            .to_string()
+            .starts_with("invalid hex flag"));
+    }
+
+    #[test]
+    fn signed() {
+        bitflags! {
+            #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+            struct TestSigned: i8 {
+                const A = 1;
+            }
+        }
+
+        assert_eq!(i8::MIN, from_str::<TestSigned>("0x80").unwrap().bits());
+        assert_eq!(-1, from_str::<TestSigned>("0xff").unwrap().bits());
+        assert_eq!(
+            1 | i8::MIN,
+            from_str::<TestSigned>("A | 0x80").unwrap().bits()
+        );
+
+        assert!(from_str::<TestSigned>("0x-1")
+            .unwrap_err()
+            .to_string()
+            .starts_with("invalid hex flag"));
+        assert!(from_str::<TestSigned>("0x100")
             .unwrap_err()
             .to_string()
             .starts_with("invalid hex flag"));
